@@ -13,18 +13,31 @@
     a  { color: #1a6fbf; text-decoration: none; }
     a:hover { text-decoration: underline; }
     .note { font-size: 0.85em; color: #888; margin-top: 40px; }
+    .fig-label { font-size: 0.95em; color: #555; margin: 24px 0 6px; }
   </style>
 </head>
 <body>
   <h1>Interactive Figures</h1>
   <p>Supplementary interactive figures accompanying:<br>
      <em>3D Generative AI for Lizard Vertebrae, Wolcott et al. 2026</em></p>
+
   <ul>
     <li><a href="run_v72_pca_1v2.html">PCA — PC1 vs PC2 by species</a></li>
     <li><a href="run_v72_pca_3v4.html">PCA — PC3 vs PC4 by species</a></li>
     <li><a href="run_v72_tSNE.html">t-SNE by life history strategy</a></li>
     <li><a href="run_v72_UMAP.html">UMAP by life history strategy</a></li>
   </ul>
+
+  <p class="fig-label">Shape variation along PC1</p>
+  <video controls width="100%">
+    <source src="pc1_4way_256p_1.5xpc.mp4" type="video/mp4">
+  </video>
+
+  <p class="fig-label">Shape variation along PC2</p>
+  <video controls width="100%">
+    <source src="pc2_4way_256p_1.5xpc.mp4" type="video/mp4">
+  </video>
+
   <p class="note">Hover over points to see species and vertebra labels. Use the Plotly toolbar to zoom and pan.</p>
 </body>
 </html>
