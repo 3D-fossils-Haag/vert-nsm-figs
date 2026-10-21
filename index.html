@@ -84,6 +84,12 @@ header a.brand{font-family:var(--serif);font-weight:600;font-size:1rem;color:var
 .busy{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:.8rem;
       background:var(--card2);color:var(--dim);font-size:.9rem;text-align:center;padding:2rem}
 .busy[hidden]{display:none}  /* needed: the rule above would otherwise keep it visible */
+.offsite{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:1rem;
+         background:var(--card2);color:var(--dim);font-size:.9rem;text-align:center;padding:2rem}
+.offsite[hidden]{display:none}
+.offsite p{margin:0;max-width:24rem}
+.offsite .pop{padding:.55rem 1rem;border-radius:2px;background:var(--pink);color:#fff;
+              text-decoration:none;font-weight:600}
 .busy i{width:1.4rem;height:1.4rem;border:2px solid var(--line);border-top-color:var(--pink);
         border-radius:50%;animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -155,6 +161,10 @@ footer{border-top:1px solid var(--line);padding:2.5rem 0 3.5rem;color:var(--dim)
     <div class="stage">
       <iframe title="Interactive morphospace"></iframe>
       <div class="busy"><i></i><span>Loading the plot…</span></div>
+      <div class="offsite" hidden>
+        <p>This host blocks embedded pages, so the plot can't be shown inline here.</p>
+        <a class="pop" target="_blank" rel="noopener">Open the plot &#8599;</a>
+      </div>
     </div>
     <div class="foot"><span class="note" data-default="Colour-by applies to the side-by-side plots."></span><a class="open" target="_blank" rel="noopener">Open in a new tab</a></div>
   </div>
@@ -177,6 +187,10 @@ footer{border-top:1px solid var(--line);padding:2.5rem 0 3.5rem;color:var(--dim)
     <div class="stage">
       <iframe title="Interactive 3D view of the mean vertebra"></iframe>
       <div class="busy"><i></i><span>Loading the model…</span></div>
+      <div class="offsite" hidden>
+        <p>This host blocks embedded pages, so the model can't be shown inline here.</p>
+        <a class="pop" target="_blank" rel="noopener">Open the model &#8599;</a>
+      </div>
     </div>
     <div class="foot"><span class="note"></span><a class="open" target="_blank" rel="noopener">Open in a new tab</a></div>
   </div>
@@ -327,9 +341,17 @@ function picker(hostId, labels, rows) {
   const bar    = host.querySelector(".picker");
   const frame  = host.querySelector("iframe");
   const busy   = host.querySelector(".busy");
+  const off    = host.querySelector(".offsite");
+  const pop    = host.querySelector(".pop");
   const note   = host.querySelector(".note");
   const open   = host.querySelector(".open");
   const choice = rows[0].slice(0, n);
+
+  // Some hosts (anonymous.4open.science among them) send X-Frame-Options and
+  // refuse to be embedded at all. Nothing can be done about that from here,
+  // so offer the plot in a new tab rather than show an empty box.
+  function blocked() { busy.hidden = true; off.hidden = false; frame.style.visibility = "hidden"; }
+  function working() { busy.hidden = true; off.hidden = true;  frame.style.visibility = ""; }
 
   const fits = (row, upto) => choice.slice(0, upto).every((v, i) => row[i] === v);
 
@@ -362,15 +384,27 @@ function picker(hostId, labels, rows) {
     const row = rows.find(r => choice.every((v, i) => r[i] === v));
     if (!row) return;
     const file = FIGDIR + row[n];
-    open.href = file;
+    open.href = pop.href = file;
     note.textContent = row[n + 1] || note.dataset.default || "";
     if (load && frame.src !== new URL(file, location.href).href) {
       busy.hidden = false;
+      off.hidden = true;
+      frame.style.visibility = "";
       frame.src = file;
+      // if nothing has rendered by now, the embed is never going to happen
+      clearTimeout(frame._wait);
+      frame._wait = setTimeout(blocked, 20000);
     }
   }
 
-  frame.addEventListener("load", () => { busy.hidden = true; refit(frame); });
+  frame.addEventListener("load", () => {
+    clearTimeout(frame._wait);
+    // reading into the frame throws when the host refuses to be embedded
+    let reachable = false;
+    try { reachable = !!(frame.contentDocument && frame.contentDocument.querySelector(".plotly-graph-div")); }
+    catch (e) { reachable = false; }
+    if (reachable) { working(); refit(frame); } else { blocked(); }
+  });
   addEventListener("resize", () => {
     clearTimeout(frame._t);
     frame._t = setTimeout(() => refit(frame), 200);
