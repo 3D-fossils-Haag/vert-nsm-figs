@@ -83,6 +83,7 @@ header a.brand{font-family:var(--serif);font-weight:600;font-size:1rem;color:var
 .stage iframe{width:100%;height:34rem;border:0}
 .busy{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:.8rem;
       background:var(--card2);color:var(--dim);font-size:.9rem;text-align:center;padding:2rem}
+.busy[hidden]{display:none}  /* needed: the rule above would otherwise keep it visible */
 .busy i{width:1.4rem;height:1.4rem;border:2px solid var(--line);border-top-color:var(--pink);
         border-radius:50%;animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -124,11 +125,10 @@ footer{border-top:1px solid var(--line);padding:2.5rem 0 3.5rem;color:var(--dim)
   <div>
     <h1>Interactive figures</h1>
     <p style="font-size:1.15rem;margin-top:1rem">Morphospaces, reference anatomy and shape-variation
-    videos accompanying the Vert-NSM paper — the parts that don't sit still on a page.</p>
+    videos accompanying Vert-NSM.</p>
     <p class="small"><em>Vert-NSM: neural shape models for shape completion, classification, and
     landmark-free morphometrics of vertebrate specimens.</em><br>
-    Wolcott KA, Cutura A, Delage M, Fenner KL, Khan AS, Koh JX, Riegler M, Sawyer C, Yu J,
-    Gatti AA, Stanley EL*, Porto A*</p>
+    Wolcott et al. 2026</p>
     <div class="btns">
       <a href="https://github.com/3D-fossils-Haag/vert-nsm">Code</a>
       <a href="https://huggingface.co/BioVisionLab">Models &amp; data</a>
@@ -240,12 +240,6 @@ footer{border-top:1px solid var(--line);padding:2.5rem 0 3.5rem;color:var(--dim)
 
 </main>
 
-<footer><div class="wrap">
-  <p>Companion to Wolcott et al. 2026. Micro-CT data produced by the oVert Thematic Collections
-  Network; supported by NSF DEB-2529932, EAR-2422839, RCN-2226185, DMR-2017977 and DB-1701714.</p>
-  <p class="faint"><a href="mailto:k.wolcott@ufl.edu">k.wolcott@ufl.edu</a></p>
-</div></footer>
-
 <script>
 // ===========================================================================
 //  EDIT HERE — the plot lists. One line each. Buttons build themselves.
@@ -295,6 +289,27 @@ const ANATOMY = [
 // ===========================================================================
 //  Machinery. You shouldn't need to change anything below.
 // ===========================================================================
+
+// The plots were exported at a fixed size (2100x800, 800x600), which overrides
+// Plotly's own responsive setting, so inside a frame they'd sit there cropped.
+// Same origin, so we can reach in, drop the fixed size and let them refit.
+function refit(frame) {
+  try {
+    const doc = frame.contentDocument, win = frame.contentWindow;
+    const plot = doc && doc.querySelector(".plotly-graph-div");
+    if (!plot) return;
+    doc.documentElement.style.height = doc.body.style.height = "100%";
+    doc.body.style.margin = "0";
+    if (plot.parentElement) plot.parentElement.style.cssText = "width:100%;height:100%";
+    plot.style.width = plot.style.height = "100%";
+    if (plot.layout) {
+      delete plot.layout.width;
+      delete plot.layout.height;
+      plot.layout.autosize = true;
+    }
+    if (win.Plotly && win.Plotly.Plots) win.Plotly.Plots.resize(plot);
+  } catch (e) { /* a plot that won't refit is still better than no plot */ }
+}
 
 // Run fn once, when el is nearly on screen. Keeps big files off the first load.
 function whenSeen(el, fn) {
@@ -355,7 +370,11 @@ function picker(hostId, labels, rows) {
     }
   }
 
-  frame.addEventListener("load", () => { busy.hidden = true; });
+  frame.addEventListener("load", () => { busy.hidden = true; refit(frame); });
+  addEventListener("resize", () => {
+    clearTimeout(frame._t);
+    frame._t = setTimeout(() => refit(frame), 200);
+  });
   draw(false);
   whenSeen(host, () => draw(true));
 }
